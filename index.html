@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Wavetable & UHM Studio</title>
+    <style>
+        :root {
+            --bg-color: #0d0e15;
+            --panel-bg: #161824;
+            --panel-border: #26293d;
+            --accent: #5865f2;
+            --mesh-line: #3d5afe;
+            --text: #e0e3f0;
+            --text-dim: #8b92b2;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            max-width: 950px;
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #fff, #8b9fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 13.5px;
+            line-height: 1.5;
+        }
+
+        .badge {
+            background: #2b2e4a;
+            color: #7983f5;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Top Control Bar */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 12px 18px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 1100px;
+            margin-bottom: 20px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 12.5px;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        select, input[type="range"] {
+            background: #0e101a;
+            border: 1px solid var(--panel-border);
+            color: var(--text);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12.5px;
+            outline: none;
+        }
+
+        select:focus { border-color: var(--accent); }
+
+        button {
+            background: linear-gradient(135deg, #4f5bd5, #5865f2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            filter: brightness(1.15);
+            transform: translateY(-1px);
+        }
+
+        button.secondary {
+            background: #222638;
+            color: var(--text);
+            border: 1px solid var(--panel-border);
+        }
+        button.secondary:hover {
+            background: #2d324b;
+        }
+
+        /* Main Workspace Grid */
+        .main-workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 1100px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .main-workspace { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .panel-title {
+            font-size: 14.5px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 380px;
+            background: #08090f;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #1a1c2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .canvas-hint {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.45);
+            pointer-events: none;
+        }
+
+        /* Player Bar */
+        .player-bar {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 14px 20px;
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .play-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            padding: 10px 22px;
+            font-size: 14px;
+            border-radius: 8px;
+        }
+        .play-btn.playing {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .pos-slider-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 260px;
+        }
+
+        /* Export section */
+        .export-section {
+            width: 100%;
+            max-width: 1100px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: #0a0b12;
+            color: #9da8d6;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            resize: vertical;
+        }
+
+        .download-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .btn-download-wav {
+            background: linear-gradient(135deg, #06b6d4, #0284c7);
+        }
+        .btn-download-uhm {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        .axis-legend {
+            font-size: 11.5px;
+            color: var(--text-dim);
+            display: flex;
+            gap: 12px;
+        }
+        .axis-item span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            margin-right: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>WAVETABLE 3D STUDIO & UHM GENERATOR</h1>
+        <p class="subtitle">
+            SUNO Studio 2.0 / Serum 規格の <strong>3Dウェーブテーブル（XYZ軸）</strong> を設計・試聴・書き出しできます。<br>
+            <strong>WAVの長さ（フレーム数）</strong>をSUNOに最適な「32フレーム (約1.5秒)」〜「256フレーム」まで自在に切り替え可能です。
+        </p>
+    </header>
+
+    <!-- Global Toolbar -->
+    <div class="toolbar">
+        <div class="tool-group">
+            <label>⏱️ WAVの長さ (フレーム数):</label>
+            <select id="numFramesSelect">
+                <option value="32" selected>32 フレーム (約 1.5 秒) ★SUNO最適・クッキリ</option>
+                <option value="64">64 フレーム (約 3.0 秒) ★標準</option>
+                <option value="128">128 フレーム (約 6.0 秒)</option>
+                <option value="256">256 フレーム (約 11.9 秒 / フルサイズ)</option>
+            </select>
+        </div>
+
+        <div class="tool-group">
+            <label>🎨 サウンド・プリセット:</label>
+            <select id="presetSelect">
+                <option value="suno_metallic" selected>⚡ SUNO Metallic Spike (画像と完全一致・鋭いスパイク→滑らかな波)</option>
+                <option value="saw_to_pulse">🎹 Saw-to-Pulse Morph (アナログ名機定番)</option>
+                <option value="vocal_talk">🗣️ Talkbox Vowel Formant (母音変化 A-E-I-O-U)</option>
+                <option value="cyber_growl">🔥 Cyber Monster Growl (FM変調)</option>
+                <option value="chiptune_glitch">👾 8-Bit Lo-Fi Glitch (矩形波・ビット階段)</option>
+                <option value="custom">✏️ 自由描画 (キャンバスに直接描く)</option>
+            </select>
+        </div>
+
+        <div class="tool-group">
+            <label>⚡ 追加変調 (FX):</label>
+            <select id="fxSelect">
+                <option value="none" selected>なし (クリーン・原音重視)</option>
+                <option value="wavefold">Wavefolder (波形折り返し・倍音強化)</option>
+                <option value="fm">FM Sweep (メタリック周波数変調)</option>
+                <option value="sync">Hard Sync (強烈なシンク・リード)</option>
+                <option value="formant">Vocal Resonator (母音共鳴)</option>
+                <option value="overdrive">Warm Overdrive (温かい飽和・ドライブ)</option>
+            </select>
+        </div>
+
+        <div class="tool-group">
+            <label>FX強度:</label>
+            <input type="range" id="fxDepth" min="0" max="100" value="40" style="width:70px;">
+            <span id="fxDepthVal" style="font-size:11.5px; min-width:28px;">40%</span>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="main-workspace">
+        
+        <!-- Left: 2D Draw Canvas (Terrain / Spectrogram) -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span>🖌️ 波形・地形ペインター (2D Contour Map)</span>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button class="secondary" id="btnInvert" title="上下反転">反転</button>
+                    <button class="secondary" id="btnSmooth" title="滑らかにする">平滑化</button>
+                    <button class="secondary" id="btnClear" title="キャンバスをクリア">クリア</button>
+                </div>
+            </div>
+            <div class="canvas-container">
+                <canvas id="drawCanvas" width="512" height="512"></canvas>
+                <div class="canvas-hint">
+                    🖱️ 左ドラッグ: 山 (+振幅) | 右ドラッグ or Shift: 谷 (-振幅) | X軸=位相(0~1), Y軸=フレーム
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: 3D Wavetable Visualizer (SUNO Style) -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span>📊 3D Wavetable Mesh (SUNO 2.0 スタイル)</span>
+                    <span class="badge" id="frameBadge">32フレーム表示</span>
+                </div>
+                <div class="axis-legend">
+                    <div class="axis-item"><span style="background:#5865f2;"></span>X: 位相</div>
+                    <div class="axis-item"><span style="background:#06b6d4;"></span>Y: フレーム</div>
+                    <div class="axis-item"><span style="background:#ffffff;"></span>Z: 振幅</div>
+                </div>
+            </div>
+            <div class="canvas-container" style="background:#06070c;">
+                <canvas id="view3dCanvas" width="512" height="512"></canvas>
+                <div class="canvas-hint">
+                    🔄 マウスドラッグで3D視点を自由に回転 | 白い発光ライン: 現在のスキャン位置
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Real-time Audio Preview Bar -->
+    <div class="player-bar">
+        <button class="play-btn" id="btnPlay">
+            <span id="playIcon">▶</span> <span id="playText">試聴 (Play Sound)</span>
+        </button>
+
+        <div class="pos-slider-group">
+            <label>📍 WT Position (フレーム位置):</label>
+            <input type="range" id="posSlider" min="0" max="31" value="0" style="flex:1;">
+            <span id="posValue" style="font-size:13px; font-weight:700; width:45px;">#0</span>
+        </div>
+
+        <div class="tool-group">
+            <label>
+                <input type="checkbox" id="lfoAutoSweep" checked> LFO自動スキャン
+            </label>
+            <select id="lfoSpeed">
+                <option value="0.25">超スロー (0.25 Hz)</option>
+                <option value="0.5" selected>標準 (0.5 Hz)</option>
+                <option value="1.0">高速 (1.0 Hz)</option>
+                <option value="2.0">超高速 (2.0 Hz)</option>
+            </select>
+        </div>
+
+        <div class="tool-group">
+            <label>基音:</label>
+            <select id="notePitch">
+                <option value="65.4">C2 (低音 / 65Hz)</option>
+                <option value="130.81" selected>C3 (中音 / 131Hz)</option>
+                <option value="261.63">C4 (高音 / 262Hz)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Export & UHM Code Section -->
+    <div class="export-section panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <span>💾 UHM スクリプト & WAV エクスポート</span>
+                <span style="font-size:12px; color:#10b981; font-weight:normal;" id="wavDurationText">WAV長: 約 1.48 秒 (32 frames × 2048 samples)</span>
+            </div>
+            <div class="download-actions">
+                <button class="btn-download-uhm" id="btnDownloadUhm">
+                    📄 .uhm をダウンロード
+                </button>
+                <button class="btn-download-wav" id="btnDownloadWav">
+                    🎵 .wav をダウンロード (SUNO用)
+                </button>
+            </div>
+        </div>
+        <textarea id="uhmCode" readonly placeholder="UHMコードがここに自動生成されます..."></textarea>
+    </div>
+
+    <script>
+        // --- CONFIG & STATE ---
+        let currentNumFrames = 32;       // Default: 32 frames (optimal for SUNO Studio 2.0!)
+        const SAMPLES_PER_FRAME = 2048;  // Industry standard wavetable resolution
+        const DISPLAY_POINTS = 64;       // Resolution of each 3D curve along X
+
+        // Terrain buffer: max 256 frames x 256 phase points (-1.0 to +1.0)
+        let terrainData = new Float32Array(256 * 256);
+
+        // 3D View rotation angles (matches SUNO perspective)
+        let rotX = 0.52;  // pitch
+        let rotY = -0.68; // yaw
+        let isDragging3D = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        // Playback state
+        let audioCtx = null;
+        let isPlaying = false;
+        let currentScanFrame = 0;
+        let lfoDirection = 1;
+        let audioNode = null;
+        let gainNode = null;
+
+        // Canvases
+        const drawCanvas = document.getElementById('drawCanvas');
+        const drawCtx = drawCanvas.getContext('2d');
+        const view3dCanvas = document.getElementById('view3dCanvas');
+        const view3dCtx = view3dCanvas.getContext('2d');
+
+        // Controls
+        const numFramesSelect = document.getElementById('numFramesSelect');
+        const presetSelect = document.getElementById('presetSelect');
+        const fxSelect = document.getElementById('fxSelect');
+        const fxDepthSlider = document.getElementById('fxDepth');
+        const fxDepthVal = document.getElementById('fxDepthVal');
+        const posSlider = document.getElementById('posSlider');
+        const posValue = document.getElementById('posValue');
+        const lfoAutoSweep = document.getElementById('lfoAutoSweep');
+        const lfoSpeed = document.getElementById('lfoSpeed');
+        const notePitch = document.getElementById('notePitch');
+        const btnPlay = document.getElementById('btnPlay');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+        const uhmTextarea = document.getElementById('uhmCode');
+        const frameBadge = document.getElementById('frameBadge');
+        const wavDurationText = document.getElementById('wavDurationText');
+
+        // --- PRESET GENERATOR ---
+        function loadPreset(presetName) {
+            for (let f = 0; f < 256; f++) {
+                let table = f / 255.0; // 0.0 (Rear) to 1.0 (Front)
+                for (let p = 0; p < 256; p++) {
+                    let phase = p / 255.0; // 0.0 to 1.0 (Wave cycle)
+                    let val = 0;
+
+                    if (presetName === 'suno_metallic') {
+                        // EXACT MATCH with SUNO Studio 2.0 Reference Screenshot:
+                        // Rear (table=0): sharp initial dip at phase 0.05, narrow resonant spike at 0.12, 
+                        // damped ringing, then settling.
+                        // Front (table=1): smooth single-cycle sine wave.
+                        let t = table;
+                        
+                        // Resonant impulse spike
+                        let impulse = Math.sin(phase * 5.0 * Math.PI) * Math.exp(-phase * 4.2);
+                        let rearWave = -Math.sin(phase * 2 * Math.PI) * 0.35 + impulse * 1.35;
+                        
+                        // Smooth fundamental wave
+                        let frontWave = Math.sin(phase * 2 * Math.PI) * 0.85;
+                        
+                        val = rearWave * (1.0 - t) + frontWave * t;
+                    } 
+                    else if (presetName === 'saw_to_pulse') {
+                        // Smooth Sawtooth to clean Pulse Width
+                        let saw = (1.0 - 2.0 * phase) * 0.8;
+                        let pulseWidth = 0.15 + table * 0.7;
+                        let pulse = (phase < pulseWidth ? 0.75 : -0.75);
+                        val = saw * (1 - table) + pulse * table;
+                    } 
+                    else if (presetName === 'vocal_talk') {
+                        // Vowel formant (O -> A -> E -> I)
+                        let f1 = 2 + table * 5;
+                        let f2 = 4 + (1 - table) * 6;
+                        val = (Math.sin(phase * f1 * 2 * Math.PI) * 0.6 + Math.sin(phase * f2 * 2 * Math.PI) * 0.4) * (1 - phase * 0.6);
+                    } 
+                    else if (presetName === 'cyber_growl') {
+                        // Controlled FM Growl (not overly chaotic)
+                        let mod = Math.sin(phase * 4 * Math.PI);
+                        val = Math.sin(phase * 2 * Math.PI + table * 1.8 * mod);
+                    } 
+                    else if (presetName === 'chiptune_glitch') {
+                        // Stepped 8-bit staircase
+                        let steps = Math.floor(3 + table * 10);
+                        val = Math.floor(Math.sin(phase * 2 * Math.PI) * steps) / steps;
+                    } 
+                    else {
+                        val = Math.sin(phase * 2 * Math.PI) * (1 - table * 0.4);
+                    }
+
+                    terrainData[f * 256 + p] = Math.max(-1, Math.min(1, val));
+                }
+            }
+            render2DCanvas();
+            updateUhmCode();
+            render3D();
+        }
+
+        // --- 2D CANVAS DRAWING ---
+        let isDrawing2D = false;
+        let drawModeSign = 1;
+
+        function render2DCanvas() {
+            const imgData = drawCtx.createImageData(256, 256);
+            const d = imgData.data;
+            for (let i = 0; i < 256 * 256; i++) {
+                let v = terrainData[i];
+                let idx = i * 4;
+                if (v >= 0) {
+                    d[idx] = Math.floor(v * 60);
+                    d[idx + 1] = Math.floor(v * 170);
+                    d[idx + 2] = Math.floor(v * 255);
+                } else {
+                    let nv = -v;
+                    d[idx] = Math.floor(nv * 230);
+                    d[idx + 1] = Math.floor(nv * 40);
+                    d[idx + 2] = Math.floor(nv * 130);
+                }
+                d[idx + 3] = 255;
+            }
+            let offscreen = document.createElement('canvas');
+            offscreen.width = 256;
+            offscreen.height = 256;
+            offscreen.getContext('2d').putImageData(imgData, 0, 0);
+
+            drawCtx.drawImage(offscreen, 0, 0, drawCanvas.width, drawCanvas.height);
+
+            // Scan line indicator
+            let normScan = currentScanFrame / (currentNumFrames - 1);
+            let scanY = normScan * drawCanvas.height;
+            drawCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            drawCtx.lineWidth = 2.5;
+            drawCtx.beginPath();
+            drawCtx.moveTo(0, scanY);
+            drawCtx.lineTo(drawCanvas.width, scanY);
+            drawCtx.stroke();
+        }
+
+        drawCanvas.addEventListener('mousedown', (e) => {
+            isDrawing2D = true;
+            drawModeSign = (e.button === 2 || e.shiftKey) ? -1 : 1;
+            paintAt(e.offsetX, e.offsetY);
+        });
+        drawCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        drawCanvas.addEventListener('mousemove', (e) => {
+            if (isDrawing2D) paintAt(e.offsetX, e.offsetY);
+        });
+        window.addEventListener('mouseup', () => {
+            if (isDrawing2D) {
+                isDrawing2D = false;
+                updateUhmCode();
+            }
+        });
+
+        function paintAt(canvasX, canvasY) {
+            presetSelect.value = "custom";
+            let tx = Math.floor((canvasX / drawCanvas.width) * 256);
+            let ty = Math.floor((canvasY / drawCanvas.height) * 256);
+            let brushRadius = 16;
+
+            for (let dy = -brushRadius; dy <= brushRadius; dy++) {
+                let py = ty + dy;
+                if (py < 0 || py >= 256) continue;
+                for (let dx = -brushRadius; dx <= brushRadius; dx++) {
+                    let px = tx + dx;
+                    if (px < 0 || px >= 256) continue;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < brushRadius) {
+                        let strength = (1 - dist / brushRadius) * 0.35 * drawModeSign;
+                        let idx = py * 256 + px;
+                        terrainData[idx] = Math.max(-1, Math.min(1, terrainData[idx] + strength));
+                    }
+                }
+            }
+            render2DCanvas();
+            render3D();
+        }
+
+        document.getElementById('btnClear').addEventListener('click', () => {
+            presetSelect.value = "custom";
+            terrainData.fill(0);
+            render2DCanvas();
+            updateUhmCode();
+            render3D();
+        });
+        document.getElementById('btnInvert').addEventListener('click', () => {
+            for (let i = 0; i < terrainData.length; i++) terrainData[i] = -terrainData[i];
+            render2DCanvas();
+            updateUhmCode();
+            render3D();
+        });
+        document.getElementById('btnSmooth').addEventListener('click', () => {
+            let temp = new Float32Array(terrainData);
+            for (let y = 1; y < 255; y++) {
+                for (let x = 1; x < 255; x++) {
+                    let avg = (temp[(y-1)*256 + x] + temp[(y+1)*256 + x] + temp[y*256 + (x-1)] + temp[y*256 + (x+1)] + temp[y*256 + x]) / 5;
+                    terrainData[y*256 + x] = avg;
+                }
+            }
+            render2DCanvas();
+            updateUhmCode();
+            render3D();
+        });
+
+        // --- FX MODIFIERS ---
+        function getSampleWithFX(frameIdxInUserRange, phaseNorm) {
+            // Map frameIdxInUserRange (0..currentNumFrames-1) to 0..255 terrain
+            let normFrame = frameIdxInUserRange / (currentNumFrames - 1);
+            let tFloat = normFrame * 255.0;
+            let t0 = Math.floor(tFloat);
+            let tFrac = tFloat - t0;
+            let t1 = Math.min(t0 + 1, 255);
+
+            let pFloat = phaseNorm * 255.0;
+            let p0 = Math.floor(pFloat);
+            let pFrac = pFloat - p0;
+            let p1 = Math.min(p0 + 1, 255);
+
+            let v00 = terrainData[t0 * 256 + p0];
+            let v01 = terrainData[t0 * 256 + p1];
+            let v10 = terrainData[t1 * 256 + p0];
+            let v11 = terrainData[t1 * 256 + p1];
+
+            let rawVal = (v00 * (1 - pFrac) + v01 * pFrac) * (1 - tFrac) + (v10 * (1 - pFrac) + v11 * pFrac) * tFrac;
+
+            const fx = fxSelect.value;
+            const depth = parseInt(fxDepthSlider.value) / 100;
+            const table = normFrame;
+
+            if (fx === 'none' || depth === 0) return rawVal;
+
+            let out = rawVal;
+            if (fx === 'wavefold') {
+                // Smooth folding
+                let drive = 1.0 + (table * 2.0 + 0.5) * depth * 2.2;
+                out = Math.sin(rawVal * drive * Math.PI * 0.5);
+            } else if (fx === 'fm') {
+                let modIndex = (table * 1.6) * depth;
+                let modulatedPhase = (phaseNorm + modIndex * Math.sin(phaseNorm * 2 * Math.PI)) % 1.0;
+                if (modulatedPhase < 0) modulatedPhase += 1.0;
+                let mp0 = Math.floor(modulatedPhase * 255);
+                out = terrainData[t0 * 256 + mp0];
+            } else if (fx === 'sync') {
+                let syncRatio = 1.0 + table * 2.0 * depth;
+                let syncedPhase = (phaseNorm * syncRatio) % 1.0;
+                let window = Math.cos(phaseNorm * Math.PI - Math.PI / 2);
+                let sp0 = Math.floor(syncedPhase * 255);
+                out = terrainData[t0 * 256 + sp0] * window;
+            } else if (fx === 'formant') {
+                let peak = Math.sin(phaseNorm * (2.0 + table * 5.0 * depth) * 2 * Math.PI);
+                out = rawVal * 0.6 + peak * 0.4 * depth;
+            } else if (fx === 'overdrive') {
+                let drive = 1.0 + table * 3.0 * depth;
+                out = Math.tanh(rawVal * drive);
+            }
+
+            return Math.max(-1, Math.min(1, out));
+        }
+
+        // --- 3D WIREFRAME RENDERER (SUNO STUDIO 2.0 STYLE) ---
+        function render3D() {
+            const w = view3dCanvas.width;
+            const h = view3dCanvas.height;
+            view3dCtx.fillStyle = '#06070c';
+            view3dCtx.fillRect(0, 0, w, h);
+
+            const cx = w * 0.5;
+            const cy = h * 0.52;
+            const scale = 175;
+
+            function project(x, y, z) {
+                let cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+                let x1 = x * cosY - y * sinY;
+                let y1 = x * sinY + y * cosY;
+                let z1 = z;
+
+                let cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+                let y2 = y1 * cosX - z1 * sinX;
+                let z2 = y1 * sinX + z1 * cosX;
+
+                let fov = 3.5;
+                let dist = y2 + fov;
+                let p = dist > 0.2 ? (fov / dist) : 1;
+
+                return { x: cx + x1 * scale * p, y: cy - z2 * scale * p, depth: y2 };
+            }
+
+            // Draw exactly currentNumFrames slices (or sample down if 128/256)
+            let drawSlices = Math.min(32, currentNumFrames);
+            let activeFrameRatio = currentScanFrame / (currentNumFrames - 1);
+
+            for (let i = drawSlices - 1; i >= 0; i--) {
+                let sliceRatio = i / (drawSlices - 1);
+                let frameIdx = Math.floor(sliceRatio * (currentNumFrames - 1));
+                let y = (sliceRatio - 0.5) * 1.8; // depth
+
+                let isActive = Math.abs(sliceRatio - activeFrameRatio) < (1.0 / drawSlices * 0.75);
+
+                view3dCtx.beginPath();
+                for (let j = 0; j < DISPLAY_POINTS; j++) {
+                    let phase = j / (DISPLAY_POINTS - 1);
+                    let x = (phase - 0.5) * 1.8;
+                    let z = getSampleWithFX(frameIdx, phase) * 0.65;
+
+                    let pt = project(x, y, z);
+                    if (j === 0) view3dCtx.moveTo(pt.x, pt.y);
+                    else view3dCtx.lineTo(pt.x, pt.y);
+                }
+
+                if (isActive) {
+                    // White highlight line (SUNO style)
+                    view3dCtx.strokeStyle = '#ffffff';
+                    view3dCtx.lineWidth = 3.5;
+                    view3dCtx.shadowColor = '#8099ff';
+                    view3dCtx.shadowBlur = 10;
+                    view3dCtx.stroke();
+                    view3dCtx.shadowBlur = 0;
+                } else {
+                    let alpha = 0.3 + (1 - i / drawSlices) * 0.65;
+                    view3dCtx.strokeStyle = `rgba(61, 90, 254, ${alpha})`;
+                    view3dCtx.lineWidth = 1.3;
+                    view3dCtx.stroke();
+                }
+            }
+
+            // Longitudinal grid lines
+            view3dCtx.lineWidth = 0.5;
+            view3dCtx.strokeStyle = 'rgba(61, 90, 254, 0.16)';
+            for (let j = 0; j < DISPLAY_POINTS; j += 8) {
+                let phase = j / (DISPLAY_POINTS - 1);
+                let x = (phase - 0.5) * 1.8;
+                view3dCtx.beginPath();
+                for (let i = 0; i < drawSlices; i++) {
+                    let sliceRatio = i / (drawSlices - 1);
+                    let frameIdx = Math.floor(sliceRatio * (currentNumFrames - 1));
+                    let y = (sliceRatio - 0.5) * 1.8;
+                    let z = getSampleWithFX(frameIdx, phase) * 0.65;
+                    let pt = project(x, y, z);
+                    if (i === 0) view3dCtx.moveTo(pt.x, pt.y);
+                    else view3dCtx.lineTo(pt.x, pt.y);
+                }
+                view3dCtx.stroke();
+            }
+        }
+
+        // 3D Canvas Drag to rotate
+        view3dCanvas.addEventListener('mousedown', (e) => {
+            isDragging3D = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging3D) return;
+            let dx = e.clientX - lastMouseX;
+            let dy = e.clientY - lastMouseY;
+            rotY += dx * 0.008;
+            rotX += dy * 0.008;
+            rotX = Math.max(0.1, Math.min(1.4, rotX));
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            render3D();
+        });
+        window.addEventListener('mouseup', () => isDragging3D = false);
+
+        // --- WEB AUDIO REAL-TIME SYNTH PREVIEW ---
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        btnPlay.addEventListener('click', () => {
+            initAudio();
+            if (isPlaying) stopSound();
+            else playSound();
+        });
+
+        function playSound() {
+            isPlaying = true;
+            btnPlay.classList.add('playing');
+            playIcon.textContent = '⏹';
+            playText.textContent = '停止 (Stop Sound)';
+            updateAudioBuffer();
+            requestAnimationFrame(animationLoop);
+        }
+
+        function stopSound() {
+            isPlaying = false;
+            btnPlay.classList.remove('playing');
+            playIcon.textContent = '▶';
+            playText.textContent = '試聴 (Play Sound)';
+            if (audioNode) {
+                audioNode.stop();
+                audioNode.disconnect();
+                audioNode = null;
+            }
+        }
+
+        function updateAudioBuffer() {
+            if (!audioCtx || !isPlaying) return;
+
+            const freq = parseFloat(notePitch.value);
+            const cycleSamples = Math.floor(audioCtx.sampleRate / freq);
+            const duration = 2.0;
+            const totalSamples = Math.floor(audioCtx.sampleRate * duration);
+
+            const buffer = audioCtx.createBuffer(1, totalSamples, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            let scanBase = currentScanFrame;
+
+            for (let i = 0; i < totalSamples; i++) {
+                let phase = (i % cycleSamples) / cycleSamples;
+                data[i] = getSampleWithFX(scanBase, phase) * 0.35;
+            }
+
+            if (audioNode) {
+                audioNode.stop();
+                audioNode.disconnect();
+            }
+
+            audioNode = audioCtx.createBufferSource();
+            audioNode.buffer = buffer;
+            audioNode.loop = true;
+
+            gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(0.75, audioCtx.currentTime);
+
+            audioNode.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            audioNode.start();
+        }
+
+        let lastTime = performance.now();
+        function animationLoop(timestamp) {
+            let dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (isPlaying && lfoAutoSweep.checked) {
+                let speed = parseFloat(lfoSpeed.value);
+                currentScanFrame += lfoDirection * speed * (currentNumFrames - 1) * dt * 2;
+                if (currentScanFrame >= currentNumFrames - 1) {
+                    currentScanFrame = currentNumFrames - 1;
+                    lfoDirection = -1;
+                } else if (currentScanFrame <= 0) {
+                    currentScanFrame = 0;
+                    lfoDirection = 1;
+                }
+                posSlider.value = Math.floor(currentScanFrame);
+                posValue.textContent = `#${Math.floor(currentScanFrame)}`;
+
+                updateAudioBuffer();
+                render2DCanvas();
+                render3D();
+            }
+
+            if (isPlaying) requestAnimationFrame(animationLoop);
+        }
+
+        posSlider.addEventListener('input', (e) => {
+            currentScanFrame = parseInt(e.target.value);
+            posValue.textContent = `#${currentScanFrame}`;
+            render2DCanvas();
+            render3D();
+            if (isPlaying) updateAudioBuffer();
+        });
+
+        // Frame Count Selector (Duration of WAV)
+        numFramesSelect.addEventListener('change', (e) => {
+            currentNumFrames = parseInt(e.target.value);
+            posSlider.max = currentNumFrames - 1;
+            if (currentScanFrame >= currentNumFrames) currentScanFrame = currentNumFrames - 1;
+            posSlider.value = currentScanFrame;
+            posValue.textContent = `#${currentScanFrame}`;
+
+            let seconds = ((currentNumFrames * SAMPLES_PER_FRAME) / 44100).toFixed(2);
+            wavDurationText.textContent = `WAV長: 約 ${seconds} 秒 (${currentNumFrames} frames × ${SAMPLES_PER_FRAME} samples)`;
+            frameBadge.textContent = `${currentNumFrames}フレーム表示`;
+
+            render2DCanvas();
+            updateUhmCode();
+            render3D();
+            if (isPlaying) updateAudioBuffer();
+        });
+
+        presetSelect.addEventListener('change', (e) => loadPreset(e.target.value));
+        fxSelect.addEventListener('change', () => {
+            render3D();
+            updateUhmCode();
+            if (isPlaying) updateAudioBuffer();
+        });
+        fxDepthSlider.addEventListener('input', (e) => {
+            fxDepthVal.textContent = `${e.target.value}%`;
+            render3D();
+            updateUhmCode();
+            if (isPlaying) updateAudioBuffer();
+        });
+        notePitch.addEventListener('change', () => {
+            if (isPlaying) updateAudioBuffer();
+        });
+
+        // --- UHM CODE & WAV EXPORT ---
+        function updateUhmCode() {
+            const fx = fxSelect.value;
+            const depth = (parseInt(fxDepthSlider.value) / 100).toFixed(2);
+            let code = `// ===============================================\n`;
+            code += `// U-HE HIVE WAVETABLE SCRIPT (.uhm)\n`;
+            code += `// Generated by 3D Wavetable Studio\n`;
+            code += `// ===============================================\n\n`;
+            code += `Info "Wavetable Morph (${currentNumFrames} frames)"\n`;
+            code += `NumFrames=${currentNumFrames}\n\n`;
+
+            // Sample keyframes across the user range
+            const step = Math.max(1, Math.floor((currentNumFrames - 1) / 4));
+            const keyframes = [0, step, step * 2, step * 3, currentNumFrames - 1];
+
+            keyframes.forEach(kf => {
+                let terms = [];
+                for (let h = 1; h <= 10; h++) {
+                    let sum = 0;
+                    for (let s = 0; s < 64; s++) {
+                        let ph = s / 64;
+                        let val = getSampleWithFX(kf, ph);
+                        sum += val * Math.sin(h * 2 * Math.PI * ph);
+                    }
+                    let amp = (sum / 32).toFixed(3);
+                    if (Math.abs(amp) > 0.04) {
+                        terms.push(`${amp} * sin(${h} * 2 * pi * phase)`);
+                    }
+                }
+                let formula = terms.length > 0 ? terms.join(" + ") : "sin(2 * pi * phase)";
+                code += `Frame=${kf}\n`;
+                code += `Wave "${formula}"\n\n`;
+            });
+
+            if (fx === 'wavefold') {
+                code += `// Wavefold saturation\n`;
+                code += `Wave "sin(main * (1.0 + table * ${depth} * 2.2) * pi * 0.5)"\n`;
+            } else if (fx === 'fm') {
+                code += `// FM Phase Modulation\n`;
+                code += `Phase "phase + table * ${depth} * 0.15 * sin(2 * pi * phase)"\n`;
+            } else if (fx === 'sync') {
+                code += `// Hard Sync Windowing\n`;
+                code += `Phase "phase * (1.0 + table * ${depth} * 2.0)"\n`;
+            } else if (fx === 'overdrive') {
+                code += `// Warm Overdrive\n`;
+                code += `Wave "tanh(main * (1.0 + table * ${depth} * 3.0))"\n`;
+            }
+
+            uhmTextarea.value = code;
+        }
+
+        document.getElementById('btnDownloadUhm').addEventListener('click', () => {
+            const blob = new Blob([uhmTextarea.value], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wavetable_${currentNumFrames}frames.uhm`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('btnDownloadWav').addEventListener('click', () => {
+            const totalSamples = currentNumFrames * SAMPLES_PER_FRAME;
+            const fullWavData = new Float32Array(totalSamples);
+
+            for (let f = 0; f < currentNumFrames; f++) {
+                for (let s = 0; s < SAMPLES_PER_FRAME; s++) {
+                    let phase = s / SAMPLES_PER_FRAME;
+                    fullWavData[f * SAMPLES_PER_FRAME + s] = getSampleWithFX(f, phase);
+                }
+            }
+
+            const wavBuffer = encodeWAV(fullWavData, SAMPLES_PER_FRAME, currentNumFrames);
+            const blob = new Blob([new DataView(wavBuffer)], { type: 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wavetable_${currentNumFrames}x${SAMPLES_PER_FRAME}.wav`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        function encodeWAV(samples, frameSize, numFrames) {
+            let buffer = new ArrayBuffer(44 + samples.length * 2);
+            let view = new DataView(buffer);
+
+            let maxVal = 0;
+            for (let i = 0; i < samples.length; i++) {
+                let abs = Math.abs(samples[i]);
+                if (abs > maxVal) maxVal = abs;
+            }
+            if (maxVal === 0) maxVal = 1;
+
+            function writeString(view, offset, str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset + i, str.charCodeAt(i));
+                }
+            }
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // PCM
+            view.setUint16(22, 1, true); // Mono
+            view.setUint32(24, 44100, true); // 44.1kHz
+            view.setUint32(28, 44100 * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+
+            let offset = 44;
+            for (let i = 0; i < samples.length; i++) {
+                let s = Math.max(-1, Math.min(1, samples[i] / maxVal));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+                offset += 2;
+            }
+            return buffer;
+        }
+
+        // --- INIT ---
+        loadPreset('suno_metallic');
+    </script>
+</body>
+</html>
