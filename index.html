@@ -309,6 +309,9 @@
             <label>🎨 サウンド・プリセット:</label>
             <select id="presetSelect">
                 <option value="suno_metallic" selected>⚡ SUNO Metallic Spike (画像と完全一致・鋭いスパイク→滑らかな波)</option>
+                <option value="kick_drum">🥁 Punchy Kick Drum (アタッククリック → ファットなサブ低音)</option>
+                <option value="acid_bass">🎛️ TB-303 Acid Bass (アシッド・レゾナンス・スクエルチ)</option>
+                <option value="flute_woodwind">🪈 Expressive Flute (笛・木管楽器・エアリーな倍音)</option>
                 <option value="saw_to_pulse">🎹 Saw-to-Pulse Morph (アナログ名機定番)</option>
                 <option value="vocal_talk">🗣️ Talkbox Vowel Formant (母音変化 A-E-I-O-U)</option>
                 <option value="cyber_growl">🔥 Cyber Monster Growl (FM変調)</option>
@@ -409,9 +412,11 @@
         <div class="tool-group">
             <label>基音:</label>
             <select id="notePitch">
-                <option value="65.4">C2 (低音 / 65Hz)</option>
+                <option value="45.0">C1 (超低音キック / 45Hz)</option>
+                <option value="65.4">C2 (低音ベース / 65Hz)</option>
                 <option value="130.81" selected>C3 (中音 / 131Hz)</option>
-                <option value="261.63">C4 (高音 / 262Hz)</option>
+                <option value="261.63">C4 (高音リード・笛 / 262Hz)</option>
+                <option value="523.25">C5 (超高音フルート / 523Hz)</option>
             </select>
         </div>
     </div>
@@ -485,6 +490,17 @@
 
         // --- PRESET GENERATOR ---
         function loadPreset(presetName) {
+            // Auto-adjust default pitch for best sonic auditioning
+            if (presetName === 'kick_drum') {
+                notePitch.value = "45.0"; // C1 (Sub-bass Kick)
+            } else if (presetName === 'acid_bass') {
+                notePitch.value = "65.4"; // C2 (Bass range)
+            } else if (presetName === 'flute_woodwind') {
+                notePitch.value = "261.63"; // C4 (Flute woodwind register)
+            } else if (presetName === 'cyber_growl') {
+                notePitch.value = "65.4"; // C2
+            }
+
             for (let f = 0; f < 256; f++) {
                 let table = f / 255.0; // 0.0 (Rear) to 1.0 (Front)
                 for (let p = 0; p < 256; p++) {
@@ -497,16 +513,45 @@
                         // damped ringing, then settling.
                         // Front (table=1): smooth single-cycle sine wave.
                         let t = table;
-                        
-                        // Resonant impulse spike
                         let impulse = Math.sin(phase * 5.0 * Math.PI) * Math.exp(-phase * 4.2);
                         let rearWave = -Math.sin(phase * 2 * Math.PI) * 0.35 + impulse * 1.35;
-                        
-                        // Smooth fundamental wave
                         let frontWave = Math.sin(phase * 2 * Math.PI) * 0.85;
-                        
                         val = rearWave * (1.0 - t) + frontWave * t;
                     } 
+                    else if (presetName === 'kick_drum') {
+                        // 1. PUNCHY KICK DRUM
+                        // Rear (table=0 / Attack): Transient beater click + punchy saturated body
+                        let click = Math.sin(phase * 14.0 * Math.PI) * Math.exp(-phase * 15.0) * 1.25;
+                        let punchSine = Math.tanh(Math.sin(phase * 2.0 * Math.PI) * 2.2);
+                        let attackWave = click + punchSine * 0.75;
+                        
+                        // Front (table=1 / Decay): Pure deep sub-bass sine wave
+                        let subWave = Math.sin(phase * 2.0 * Math.PI) * 0.95;
+
+                        val = attackWave * (1.0 - table) + subWave * table;
+                    }
+                    else if (presetName === 'acid_bass') {
+                        // 2. TB-303 ACID BASS
+                        // TB-303 Saw base wave + diode ladder resonant peak sweeping with frame
+                        let saw = (1.0 - 2.0 * phase) * 0.65;
+                        let resHarmonic = 2.5 + table * 9.5; // Sweeps resonant cutoff
+                        let resPeak = Math.sin(phase * resHarmonic * 2.0 * Math.PI) * Math.exp(-phase * 1.6) * (0.45 + table * 0.85);
+                        // Diode non-linear soft clipping
+                        val = Math.tanh((saw + resPeak) * (1.2 + table * 0.8));
+                    }
+                    else if (presetName === 'flute_woodwind') {
+                        // 3. EXPRESSIVE FLUTE / WOODWIND
+                        // Hollow cylindrical pipe acoustics: Strong fundamental + 3rd and 5th odd harmonics
+                        let fund = Math.sin(phase * 2.0 * Math.PI);
+                        let h2 = Math.sin(phase * 4.0 * Math.PI) * (0.08 + table * 0.06); // subtle wooden warmth
+                        let h3 = Math.sin(phase * 6.0 * Math.PI) * (0.20 + table * 0.22); // hollow tube pipe characteristic
+                        let h4 = Math.sin(phase * 8.0 * Math.PI) * (0.04 + table * 0.05);
+                        let h5 = Math.sin(phase * 10.0 * Math.PI) * (0.09 * table);       // overblow shimmer
+                        // Breath air chiff at cycle start
+                        let breathAir = Math.sin(phase * 14.0 * Math.PI) * Math.exp(-phase * 3.5) * (0.12 * (1.0 - table * 0.5));
+                        
+                        val = (fund * 0.85 + h2 + h3 + h4 + h5 + breathAir);
+                    }
                     else if (presetName === 'saw_to_pulse') {
                         // Smooth Sawtooth to clean Pulse Width
                         let saw = (1.0 - 2.0 * phase) * 0.8;
@@ -540,6 +585,7 @@
             render2DCanvas();
             updateUhmCode();
             render3D();
+            if (isPlaying) updateAudioBuffer();
         }
 
         // --- 2D CANVAS DRAWING ---
